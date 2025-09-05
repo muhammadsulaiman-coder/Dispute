@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Professional Dark Theme Design System for Markaz Supplier Portal */
+
+@layer base {
+  :root {
+    /* Dark theme base colors */
+    --background: 222 22% 8%;
+    --foreground: 210 40% 95%;
+
+    /* Card and surface colors */
+    --card: 222 22% 12%;
+    --card-foreground: 210 40% 95%;
+
+    /* Popover colors */
+    --popover: 222 22% 10%;
+    --popover-foreground: 210 40% 95%;
+
+    /* Brand colors - Markaz green theme */
+    --primary: 142 69% 58%;
+    --primary-foreground: 222 22% 8%;
+
+    /* Secondary brand colors */
+    --secondary: 222 22% 18%;
+    --secondary-foreground: 210 40% 95%;
+
+    /* Muted colors for subtle elements */
+    --muted: 222 22% 16%;
+    --muted-foreground: 215 20% 65%;
+
+    /* Accent colors */
+    --accent: 142 69% 58%;
+    --accent-foreground: 222 22% 8%;
+
+    /* Status colors */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --success: 142 69% 58%;
+    --success-foreground: 222 22% 8%;
+    
+    --warning: 45 93% 58%;
+    --warning-foreground: 222 22% 8%;
+    
+    --info: 217 91% 60%;
+    --info-foreground: 210 40% 98%;
+
+    /* Status specific colors for disputes */
+    --status-pending: 45 93% 58%;
+    --status-pending-foreground: 222 22% 8%;
+    
+    --status-resolved: 142 69% 58%;
+    --status-resolved-foreground: 222 22% 8%;
+    
+    --status-rejected: 0 72% 51%;
+    --status-rejected-foreground: 210 40% 98%;
+    
+    --status-progress: 217 91% 60%;
+    --status-progress-foreground: 210 40% 98%;
+
+    /* Border and input colors */
+    --border: 222 22% 20%;
+    --input: 222 22% 16%;
+    --ring: 142 69% 58%;
+
+    /* Enhanced design elements */
+    --gradient-primary: linear-gradient(135deg, hsl(142 69% 58%), hsl(142 80% 45%));
+    --gradient-card: linear-gradient(145deg, hsl(222 22% 12%), hsl(222 22% 10%));
+    --gradient-surface: linear-gradient(180deg, hsl(222 22% 14%), hsl(222 22% 10%));
+    
+    /* Shadows and effects */
+    --shadow-primary: 0 4px 20px -2px hsl(142 69% 58% / 0.2);
+    --shadow-card: 0 4px 24px -8px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 8px 40px -12px hsl(0 0% 0% / 0.6);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --radius: 0.75rem;
+
+    /* Sidebar design tokens */
+    --sidebar-background: 222 22% 10%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 142 69% 58%;
+    --sidebar-primary-foreground: 222 22% 8%;
+    --sidebar-accent: 222 22% 16%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 222 22% 18%;
+    --sidebar-ring: 142 69% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-medium;
+    background-image: 
+      radial-gradient(at 20% 80%, hsla(225, 34%, 12%, 0.3) 0px, transparent 50%),
+      radial-gradient(at 80% 20%, hsla(142, 69%, 58%, 0.1) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes scaleIn {
+    from { 
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Status badge styles */
+  .status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+    transition: var(--transition-smooth);
+  }
+
+  .status-pending {
+    @apply bg-status-pending/20 text-status-pending border border-status-pending/30;
+  }
+
+  .status-resolved {
+    @apply bg-status-resolved/20 text-status-resolved border border-status-resolved/30;
+  }
+
+  .status-rejected {
+    @apply bg-status-rejected/20 text-status-rejected border border-status-rejected/30;
+  }
+
+  .status-progress {
+    @apply bg-status-progress/20 text-status-progress border border-status-progress/30;
+  }
+
+  .status-warning {
+    @apply bg-orange-500/20 text-orange-400 border border-orange-500/30;
+  }
+
+  .status-success {
+    @apply bg-purple-500/20 text-purple-400 border border-purple-500/30;
+  }
+}
