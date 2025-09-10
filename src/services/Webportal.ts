@@ -1,0 +1,185 @@
+// src/services/Webportal.ts
+// Service wrapper that exposes helper functions to the frontend.
+// Uses the existing src/services/googlesheets.ts mock service by default.
+// Change USE_DEMO to false to use Apps Script endpoint (production).
+
+import { googleSheetsService, Dispute as MockDispute } from './googleSheets';
+
+export type Dispute = MockDispute;
+
+const API_URL = "https://script.google.com/macros/s/AKfycbz8gX5cSsaaTO5LGq75qydkynsH2G0T4wb-Ovd58SkDacpkhbHHM6u-zn28pp0vHeC-/exec";
+
+// Toggle this flag:
+// - true  = use local mock (googleSheetsService)  <-- recommended for local/dev
+// - false = call Apps Script endpoint (production)
+export const USE_DEMO = true;
+
+/**
+ * Utility: try multiple possible keys from the sheet row.
+ */
+function getFirst(row: Record<string, any>, ...keys: string[]) {
+  if (!row) return "";
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && row[k] !== "") return row[k];
+    // try case-insensitive match for keys returned by Apps Script (headers with spaces)
+    const foundKey = Object.keys(row).find((rk) => rk.toLowerCase() === k.toLowerCase());
+    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && row[foundKey] !== "") {
+      return row[foundKey];
+    }
+  }
+  return "";
+}
+
+/**
+ * Normalize a single raw row (from Apps Script or other source) into our Dispute type.
+ */
+function normalizeRow(row: Record<string, any>): Dispute {
+  const supplierField = String(getFirst(row, "Supplier", "supplier", "Supplier Name", "supplierName") || "");
+  let supplierName = supplierField;
+  let supplierEmail = String(getFirst(row, "supplierEmail", "Supplier Email", "supplier_email") || "");
+
+  // try to extract email from supplier field (e.g. "Acme Co (supplier@acme.com)")
+  const emailMatch = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/.exec(supplierField);
+  if (emailMatch) {
+    supplierEmail = emailMatch[1];
+    supplierName = supplierField.replace(emailMatch[0], "").replace(/[()<>]/g, "").trim();
+  }
+
+  const idFromRow = getFirst(row, "id", "ID", "Id") || `${getFirst(row, "Order Item ID", "OrderItemID") || ""}-${getFirst(row, "TrackingID", "TrackingId") || ""}`;
+
+  const dispute: Dispute = {
+    id: String(idFromRow || ""),
+    orderItemId: String(getFirst(row, "orderItemId", "Order Item ID", "OrderItemID") || ""),
+    trackingId: String(getFirst(row, "trackingId", "TrackingID", "Tracking Id") || ""),
+    supplierCity: String(getFirst(row, "supplierCity", "City", "city") || ""),
+    deliveryPartner: String(getFirst(row, "deliveryPartner", "Delivery Partner") || ""),
+    supplierName: supplierName || "",
+    supplierEmail: supplierEmail || "",
+    status: (getFirst(row, "status", "Status") as Dispute["status"]) || "Pending",
+    lastUpdateDate: String(getFirst(row, "lastUpdateDate", "Last Update", "LastUpdate") || ""),
+    reason: String(getFirst(row, "reason", "ReasonforDispute", "Reason for Dispute", "Reason") || ""),
+    submissionDate: String(getFirst(row, "submissionDate", "Submission Date", "SubmissionDate") || ""),
+    supplierId: String(getFirst(row, "supplierId", "SupplierID", "supplier_id") || "")
+  };
+
+  return dispute;
+}
+
+/**
+ * Get all disputes from the Adminportal tab (normalized).
+ */
+export async function getAdminportalDisputes(): Promise<Dispute[]> {
+  if (USE_DEMO) {
+    // use your mock service
+    return await googleSheetsService.getDisputes();
+  }
+
+  const res = await fetch(`${API_URL}?tab=Adminportal`);
+  if (!res.ok) throw new Error("Failed to fetch Adminportal data");
+  const raw = await res.json();
+  if (!Array.isArray(raw)) return [];
+  return raw.map((r: any) => normalizeRow(r));
+}
+
+/**
+ * Get supplier-specific disputes (Supplierview).
+ * You can pass supplierEmail or supplierId to filter on server side (client side fallback is applied).
+ */
+export async function getSupplierviewDisputes(supplierIdOrEmail?: string): Promise<Dispute[]> {
+  if (USE_DEMO) {
+    return await googleSheetsService.getDisputes(supplierIdOrEmail);
+  }
+
+  const res = await fetch(`${API_URL}?tab=Supplierview`);
+  if (!res.ok) throw new Error("Failed to fetch Supplierview data");
+  const raw = await res.json();
+  let arr: Dispute[] = Array.isArray(raw) ? raw.map((r: any) => normalizeRow(r)) : [];
+  if (supplierIdOrEmail) {
+    arr = arr.filter((d) => d.supplierEmail === supplierIdOrEmail || d.supplierId === supplierIdOrEmail);
+  }
+  return arr;
+}
+
+/**
+ * Create a new dispute (Newform tab).
+ * Accepts a minimal object similar to your NewDisputeForm component.
+ */
+export async function createDispute(payload: {
+  orderItemId: string;
+  trackingId: string;
+  reason: string;
+  supplierName: string;
+  supplierEmail: string;
+  supplierId?: string;
+  city?: string;
+  deliveryPartner?: string;
+}): Promise<boolean> {
+  if (USE_DEMO) {
+    // googleSheetsService.createDispute expects Omit<Dispute, 'id'|'submissionDate'|'lastUpdateDate'>
+    return await googleSheetsService.createDispute({
+      orderItemId: payload.orderItemId,
+      trackingId: payload.trackingId,
+      supplierCity: payload.city || "",
+      deliveryPartner: payload.deliveryPartner || "",
+      supplierName: payload.supplierName,
+      supplierEmail: payload.supplierEmail,
+      supplierId: payload.supplierId
+    } as any);
+  }
+
+  const body = {
+    tab: "Newform",
+    Timestamp: new Date().toISOString(),
+    OrderItemID: payload.orderItemId,
+    TrackingID: payload.trackingId,
+    City: payload.city || "",
+    DeliveryPartner: payload.deliveryPartner || "",
+    Supplier: `${payload.supplierName} (${payload.supplierEmail})`,
+    ReasonforDispute: payload.reason
+  };
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const result = await res.json();
+  return result && result.success === true;
+}
+
+/**
+ * Update a dispute status (updates Adminportal and keeps things in sync).
+ */
+export async function updateDisputeStatus(disputeId: string, newStatus: Dispute["status"]): Promise<boolean> {
+  if (USE_DEMO) {
+    return await googleSheetsService.updateDisputeStatus(disputeId, newStatus);
+  }
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "updateStatus",
+      id: disputeId,
+      status: newStatus
+    })
+  });
+
+  const result = await res.json();
+  return result && result.success === true;
+}
+
+/**
+ * Small helper alias used by some components you pasted earlier.
+ */
+export const fetchDisputes = getAdminportalDisputes;
+
+export default {
+  getAdminportalDisputes,
+  getSupplierviewDisputes,
+  createDispute,
+  updateDisputeStatus,
+  fetchDisputes
+};
+

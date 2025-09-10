@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -6,47 +6,50 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, Filter, RefreshCw, Download } from 'lucide-react';
-import { Dispute } from '@/services/googleSheets';
-import { useToast } from '@/hooks/use-toast';
-import * as XLSX from 'xlsx';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search, Filter, RefreshCw, Download } from "lucide-react";
+import { Dispute } from "@/services/Webportal"; // ✅ Fixed path
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 interface DisputeTableProps {
   disputes: Dispute[];
-  onStatusUpdate: (disputeId: string, newStatus: Dispute['status']) => Promise<void>;
+  onStatusUpdate: (
+    disputeId: string,
+    newStatus: Dispute["status"]
+  ) => Promise<void>;
   isAdmin?: boolean;
   isLoading?: boolean;
   onRefresh?: () => void;
 }
 
-const getStatusVariant = (status: Dispute['status']) => {
+const getStatusVariant = (status: Dispute["status"]) => {
   switch (status) {
-    case 'Pending':
-      return 'status-pending';
-    case 'In Progress':
-      return 'status-progress';
-    case 'Resolved':
-      return 'status-resolved';
-    case 'Rejected':
-      return 'status-rejected';
-    case 'Fake Signatures':
-      return 'status-warning';
-    case 'Paid':
-      return 'status-success';
+    case "Pending":
+      return "status-pending";
+    case "In Progress":
+      return "status-progress";
+    case "Resolved":
+      return "status-resolved";
+    case "Rejected":
+      return "status-rejected";
+    case "Fake Signatures":
+      return "status-warning";
+    case "Paid":
+      return "status-success";
     default:
-      return 'default';
+      return "default";
   }
 };
 
@@ -55,12 +58,14 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
   onStatusUpdate,
   isAdmin = false,
   isLoading = false,
-  onRefresh
+  onRefresh,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [cityFilter, setCityFilter] = useState<string>('all');
-  const [updatingDisputes, setUpdatingDisputes] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [cityFilter, setCityFilter] = useState<string>("all");
+  const [updatingDisputes, setUpdatingDisputes] = useState<Set<string>>(
+    new Set()
+  );
   const { toast } = useToast();
 
   const getDaysPassedSinceSubmission = (submissionDate: string) => {
@@ -71,67 +76,78 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
   };
 
   const exportToExcel = () => {
-    const exportData = filteredDisputes.map(dispute => ({
-      'Order Item ID': dispute.orderItemId,
-      'Tracking ID': dispute.trackingId,
-      'City': dispute.supplierCity,
-      'Delivery Partner': dispute.deliveryPartner,
-      'Status': dispute.status,
-      'Submission Date': dispute.submissionDate,
-      'Days Since Submission': getDaysPassedSinceSubmission(dispute.submissionDate),
-      'Last Update': dispute.lastUpdateDate,
-      'Reason': dispute.reason || ''
+    const exportData = filteredDisputes.map((dispute) => ({
+      "Order Item ID": dispute.orderItemId,
+      "Tracking ID": dispute.trackingId,
+      City: dispute.supplierCity,
+      "Delivery Partner": dispute.deliveryPartner,
+      Status: dispute.status,
+      "Submission Date": dispute.submissionDate,
+      "Days Since Submission": getDaysPassedSinceSubmission(
+        dispute.submissionDate
+      ),
+      "Last Update": dispute.lastUpdateDate,
+      Reason: dispute.reason || "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Disputes');
-    
-    const fileName = `disputes_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.utils.book_append_sheet(wb, ws, "Disputes");
+
+    const fileName = `disputes_export_${
+      new Date().toISOString().split("T")[0]
+    }.xlsx`;
     XLSX.writeFile(wb, fileName);
-    
+
     toast({
-      title: 'Export Successful',
-      description: 'Disputes data has been downloaded as Excel file.',
+      title: "Export Successful",
+      description: "Disputes data has been downloaded as Excel file.",
     });
   };
 
   const filteredDisputes = useMemo(() => {
-    return disputes.filter(dispute => {
-      const matchesSearch = 
-        dispute.orderItemId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    return disputes.filter((dispute) => {
+      const matchesSearch =
+        dispute.orderItemId
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
         dispute.trackingId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dispute.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         dispute.supplierEmail.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === 'all' || dispute.status === statusFilter;
-      const matchesCity = cityFilter === 'all' || dispute.supplierCity === cityFilter;
-      
+
+      const matchesStatus =
+        statusFilter === "all" || dispute.status === statusFilter;
+      const matchesCity =
+        cityFilter === "all" || dispute.supplierCity === cityFilter;
+
       return matchesSearch && matchesStatus && matchesCity;
     });
   }, [disputes, searchTerm, statusFilter, cityFilter]);
 
   const uniqueCities = useMemo(() => {
-    return Array.from(new Set(disputes.map(d => d.supplierCity))).sort();
+    return Array.from(new Set(disputes.map((d) => d.supplierCity))).sort();
   }, [disputes]);
 
-  const handleStatusChange = async (disputeId: string, newStatus: Dispute['status']) => {
-    setUpdatingDisputes(prev => new Set(prev).add(disputeId));
-    
+  const handleStatusChange = async (
+    disputeId: string,
+    newStatus: Dispute["status"]
+  ) => {
+    setUpdatingDisputes((prev) => new Set(prev).add(disputeId));
+
     try {
       await onStatusUpdate(disputeId, newStatus);
       toast({
-        title: 'Status Updated',
+        title: "Status Updated",
         description: `Dispute status changed to ${newStatus}`,
       });
     } catch (error) {
       toast({
-        title: 'Update Failed',
-        description: 'Failed to update dispute status. Please try again.',
-        variant: 'destructive',
+        title: "Update Failed",
+        description: "Failed to update dispute status. Please try again.",
+        variant: "destructive",
       });
     } finally {
-      setUpdatingDisputes(prev => {
+      setUpdatingDisputes((prev) => {
         const newSet = new Set(prev);
         newSet.delete(disputeId);
         return newSet;
@@ -146,7 +162,7 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
           <CardTitle className="text-xl font-semibold">
             Dispute Management ({filteredDisputes.length})
           </CardTitle>
-          
+
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -165,7 +181,9 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
                 disabled={isLoading}
                 className="flex items-center gap-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
                 Refresh
               </Button>
             )}
@@ -183,7 +201,7 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
               className="pl-10 bg-input border-border"
             />
           </div>
-          
+
           <div className="flex gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-32 bg-input border-border">
@@ -208,8 +226,10 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
                   <SelectItem value="all">All Cities</SelectItem>
-                  {uniqueCities.map(city => (
-                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                  {uniqueCities.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -238,38 +258,53 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
             <TableBody>
               {filteredDisputes.length === 0 ? (
                 <TableRow>
-                  <TableCell 
-                    colSpan={isAdmin ? 9 : 8} 
+                  <TableCell
+                    colSpan={isAdmin ? 9 : 8}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    {isLoading ? 'Loading disputes...' : 'No disputes found'}
+                    {isLoading ? "Loading disputes..." : "No disputes found"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredDisputes.map((dispute) => (
                   <TableRow key={dispute.id} className="hover:bg-muted/10">
-                    <TableCell className="font-medium">{dispute.orderItemId}</TableCell>
+                    <TableCell className="font-medium">
+                      {dispute.orderItemId}
+                    </TableCell>
                     <TableCell>{dispute.trackingId}</TableCell>
                     <TableCell>{dispute.supplierCity}</TableCell>
                     <TableCell>{dispute.deliveryPartner}</TableCell>
                     {isAdmin && (
                       <TableCell>
                         <div>
-                          <div className="font-medium">{dispute.supplierName}</div>
-                          <div className="text-sm text-muted-foreground">{dispute.supplierEmail}</div>
+                          <div className="font-medium">
+                            {dispute.supplierName}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {dispute.supplierEmail}
+                          </div>
                         </div>
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge className={`status-badge ${getStatusVariant(dispute.status)}`}>
+                      <Badge
+                        className={`status-badge ${getStatusVariant(
+                          dispute.status
+                        )}`}
+                      >
                         {dispute.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(dispute.submissionDate).toLocaleDateString()}
+                      {new Date(
+                        dispute.submissionDate
+                      ).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {getDaysPassedSinceSubmission(dispute.submissionDate)} days
+                      {getDaysPassedSinceSubmission(
+                        dispute.submissionDate
+                      )}{" "}
+                      days
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {new Date(dispute.lastUpdateDate).toLocaleDateString()}
@@ -278,7 +313,12 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
                       {isAdmin ? (
                         <Select
                           value={dispute.status}
-                          onValueChange={(value) => handleStatusChange(dispute.id, value as Dispute['status'])}
+                          onValueChange={(value) =>
+                            handleStatusChange(
+                              dispute.id,
+                              value as Dispute["status"]
+                            )
+                          }
                           disabled={updatingDisputes.has(dispute.id)}
                         >
                           <SelectTrigger className="w-32 bg-input border-border">
@@ -286,10 +326,14 @@ export const DisputeTable: React.FC<DisputeTableProps> = ({
                           </SelectTrigger>
                           <SelectContent className="bg-popover border-border">
                             <SelectItem value="Pending">Pending</SelectItem>
-                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="In Progress">
+                              In Progress
+                            </SelectItem>
                             <SelectItem value="Resolved">Resolved</SelectItem>
                             <SelectItem value="Rejected">Rejected</SelectItem>
-                            <SelectItem value="Fake Signatures">Fake Signatures</SelectItem>
+                            <SelectItem value="Fake Signatures">
+                              Fake Signatures
+                            </SelectItem>
                             <SelectItem value="Paid">Paid</SelectItem>
                           </SelectContent>
                         </Select>

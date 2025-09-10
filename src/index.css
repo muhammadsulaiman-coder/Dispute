@@ -1,6 +1,8 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 
 /* Professional Dark Theme Design System for Markaz Supplier Portal */
 
@@ -95,11 +97,13 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground font-medium;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-weight: 500;
     background-image: 
       radial-gradient(at 20% 80%, hsla(225, 34%, 12%, 0.3) 0px, transparent 50%),
       radial-gradient(at 80% 20%, hsla(142, 69%, 58%, 0.1) 0px, transparent 50%);
@@ -165,32 +169,45 @@
   }
 
   /* Status badge styles */
-  .status-badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
-    transition: var(--transition-smooth);
-  }
-
-  .status-pending {
-    @apply bg-status-pending/20 text-status-pending border border-status-pending/30;
-  }
-
-  .status-resolved {
-    @apply bg-status-resolved/20 text-status-resolved border border-status-resolved/30;
-  }
-
-  .status-rejected {
-    @apply bg-status-rejected/20 text-status-rejected border border-status-rejected/30;
-  }
-
-  .status-progress {
-    @apply bg-status-progress/20 text-status-progress border border-status-progress/30;
-  }
-
-  .status-warning {
-    @apply bg-orange-500/20 text-orange-400 border border-orange-500/30;
-  }
-
-  .status-success {
-    @apply bg-purple-500/20 text-purple-400 border border-purple-500/30;
-  }
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
 }
+
+.status-pending {
+  background-color: hsl(var(--status-pending) / 0.2);
+  color: hsl(var(--status-pending));
+  border: 1px solid hsl(var(--status-pending) / 0.3);
+}
+
+.status-resolved {
+  background-color: hsl(var(--status-resolved) / 0.2);
+  color: hsl(var(--status-resolved));
+  border: 1px solid hsl(var(--status-resolved) / 0.3);
+}
+
+.status-rejected {
+  background-color: hsl(var(--status-rejected) / 0.2);
+  color: hsl(var(--status-rejected));
+  border: 1px solid hsl(var(--status-rejected) / 0.3);
+}
+
+.status-progress {
+  background-color: hsl(var(--status-progress) / 0.2);
+  color: hsl(var(--status-progress));
+  border: 1px solid hsl(var(--status-progress) / 0.3);
+}
+
+.status-warning {
+  background-color: rgba(251, 146, 60, 0.2); /* Tailwind bg-orange-500/20 */
+  color: #fb923c; /* Tailwind text-orange-400 */
+  border: 1px solid rgba(251, 146, 60, 0.3); /* Tailwind border-orange-500/30 */
+}
+
+.status-success {
+  background-color: rgba(168, 85, 247, 0.2); /* Tailwind bg-purple-500/20 */
+  color: #a855f7; /* Tailwind text-purple-400 */
+  border: 1px solid rgba(168, 85, 247, 0.3); /* Tailwind border-purple-500/30 */
+}}

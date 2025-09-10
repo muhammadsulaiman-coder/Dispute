@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout } from '@/components/Layout';
 import { MetricCard } from '@/components/MetricCard';
 import { DisputeTable } from '@/components/DisputeTable';
-import { DisputeCharts } from '@/components/DisputeCharts';
+import DisputeCharts from '@/components/ui/DisputeCharts';
 import { googleSheetsService, Dispute } from '@/services/googleSheets';
 import { 
   FileText, 
@@ -282,12 +282,12 @@ export const AdminDashboard: React.FC = () => {
             />
           </TabsContent>
 
-          <TabsContent value="analytics">
+            <TabsContent value="analytics">
             <DisputeCharts 
-              statusData={statusData}
+            statusData={statusData}
               ageData={ageData}
             />
-          </TabsContent>
+            </TabsContent>
         </Tabs>
       </div>
     </Layout>
