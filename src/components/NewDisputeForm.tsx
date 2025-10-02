@@ -1,180 +1,98 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Send } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+import React, { useState } from "react";
+import googleSheetsAPI, { DisputeData } from "../services/googleSheets";
 
-interface NewDisputeFormProps {
-  onSubmit: (dispute: {
-    orderItemId: string;
-    trackingId: string;
-    reason: string;
-    supplierName: string;
-    supplierEmail: string;
-    supplierId?: string;
-  }) => Promise<void>;
-  isLoading?: boolean;
-}
+export const NewDisputeForm: React.FC = () => {
+  const [formData, setFormData] = useState<DisputeData>({
+    OrderItemID: "",
+    TrackingID: "",
+    ReasonforDispute: "",
+  });
 
-export const NewDisputeForm: React.FC<NewDisputeFormProps> = ({
-  onSubmit,
-  isLoading = false
-}) => {
-  const [orderItemId, setOrderItemId] = useState('');
-  const [trackingId, setTrackingId] = useState('');
-  const [reason, setReason] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-
-    if (!orderItemId.trim() || !trackingId.trim() || !reason.trim()) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    if (!user) {
-      setError('User not authenticated');
-      return;
-    }
-
-    setIsSubmitting(true);
+    setLoading(true);
+    setMessage("");
 
     try {
-      await onSubmit({
-        orderItemId: orderItemId.trim(),
-        trackingId: trackingId.trim(),
-        reason: reason.trim(),
-        supplierName: user.supplierName || user.email,
-        supplierEmail: user.email,
-        supplierId: user.supplierId
-      });
-
-      // Reset form
-      setOrderItemId('');
-      setTrackingId('');
-      setReason('');
-      
-      toast({
-        title: 'Dispute Submitted',
-        description: 'Your dispute has been successfully submitted for review.',
+      await googleSheetsAPI.createDispute(formData);
+      setMessage("Dispute created successfully!");
+      setFormData({
+        OrderItemID: "",
+        TrackingID: "",
+        ReasonforDispute: "",
       });
     } catch (error) {
-      console.error('Error submitting dispute:', error);
-      setError('Failed to submit dispute. Please try again.');
-      toast({
-        title: 'Submission Failed',
-        description: 'Failed to submit dispute. Please try again.',
-        variant: 'destructive',
-      });
+      console.error(error);
+      setMessage("Failed to create dispute. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="bg-card border-border/50 shadow-card">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5 text-primary" />
-          Submit New Dispute
-        </CardTitle>
-        <CardDescription>
-          Create a new return dispute for investigation
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="orderItemId">
-                Order Item ID <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="orderItemId"
-                type="text"
-                placeholder="e.g., ORD12345"
-                value={orderItemId}
-                onChange={(e) => setOrderItemId(e.target.value)}
-                className="bg-input border-border focus:ring-primary"
-                disabled={isSubmitting || isLoading}
-                required
-              />
-            </div>
+    <div className="p-4 max-w-md mx-auto bg-white shadow rounded">
+      <h2 className="text-xl font-bold mb-4">Create New Dispute</h2>
 
-            <div className="space-y-2">
-              <Label htmlFor="trackingId">
-                Tracking ID <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="trackingId"
-                type="text"
-                placeholder="e.g., TRK12345"
-                value={trackingId}
-                onChange={(e) => setTrackingId(e.target.value)}
-                className="bg-input border-border focus:ring-primary"
-                disabled={isSubmitting || isLoading}
-                required
-              />
-            </div>
-          </div>
+      {message && (
+        <div className="mb-4 text-sm text-center text-blue-600">{message}</div>
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="reason">
-              Reason for Dispute <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="reason"
-              placeholder="Please describe the issue with this order/delivery..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="bg-input border-border focus:ring-primary min-h-[100px]"
-              disabled={isSubmitting || isLoading}
-              required
-            />
-            <p className="text-sm text-muted-foreground">
-              Provide detailed information about the issue to help us process your dispute faster.
-            </p>
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium">Order Item ID</label>
+          <input
+            type="text"
+            name="OrderItemID"
+            value={formData.OrderItemID}
+            onChange={handleChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
 
-          {error && (
-            <Alert variant="destructive" className="animate-slide-up">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+        <div>
+          <label className="block text-sm font-medium">Tracking ID</label>
+          <input
+            type="text"
+            name="TrackingID"
+            value={formData.TrackingID}
+            onChange={handleChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
 
-          <div className="pt-4 border-t border-border">
-            <Button
-              type="submit"
-              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary"
-              disabled={isSubmitting || isLoading}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Submit Dispute
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        <div>
+          <label className="block text-sm font-medium">Reason for Dispute</label>
+          <textarea
+            name="ReasonforDispute"
+            value={formData.ReasonforDispute}
+            onChange={handleChange}
+            className="w-full border p-2 rounded"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Submitting..." : "Submit Dispute"}
+        </button>
+      </form>
+    </div>
   );
 };

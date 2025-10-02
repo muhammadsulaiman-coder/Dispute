@@ -1,3 +1,4 @@
+// src/components/Login.tsx
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, LogIn, Shield } from 'lucide-react';
+import { Eye, EyeOff, LogIn, Shield, User, AlertCircle } from 'lucide-react';
+// IMPORTANT: adjust the relative path below if your googlesheet service file is located elsewhere.
+// From src/components/Login.tsx -> common locations:
+//  - src/services/googlesheet.ts  => ../services/googlesheet
+//  - src/lib/googlesheet.ts       => ../lib/googlesheet
+// If you use path aliases (@"..."), ensure tsconfig paths are configured.
+import { googleSheetsAPI } from '../services/googleSheets';
 import markazLogo from '@/assets/markaz-logo.png';
 
 export const LoginPage: React.FC = () => {
@@ -13,32 +20,88 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, isLoading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsSubmitting(true);
 
     if (!email || !password) {
       setError('Please enter both email and password');
+      setIsSubmitting(false);
       return;
     }
 
-    const success = await login(email, password);
-    if (!success) {
-      setError('Invalid credentials. Please try again.');
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      // Call the Google Sheets API for login
+      const response = await googleSheetsAPI.loginSupplier({ email, password });
+
+      // response shape: { success: boolean, data: { success: boolean, user: { ... } } } (per your googlesheets API)
+      if (response.success && response.data?.success) {
+        // We got a valid user from the Sheets API
+        // NOTE: login(...) expects 2 args (email, password) per your error: "Expected 2 arguments, but got 3."
+        // So call login(email, password) and rely on your AuthContext to fetch/store user details internally.
+        const success = await login(email, password);
+
+        if (!success) {
+          setError('Login failed. Please try again.');
+        }
+        // If login succeeded, navigate or let auth context drive the UI change.
+      } else {
+        // Login failed according to the Sheets API
+        const errorMessage = response.data?.message || response.error || 'Invalid credentials. Please try again.';
+        setError(errorMessage);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Connection error. Please check your internet connection and try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const fillDemoCredentials = (role: 'admin' | 'supplier') => {
     if (role === 'admin') {
-      setEmail('admin@demo');
-      setPassword('Passw0rd!');
+      setEmail('admin@markaz.com');
+      setPassword('admin123');
     } else {
-      setEmail('supplier@demo');
-      setPassword('Passw0rd!');
+      setEmail('supplier@demo.com');
+      setPassword('supplier123');
+    }
+    setError(''); // Clear any previous errors
+  };
+
+  const testConnection = async () => {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const response = await googleSheetsAPI.healthCheck();
+      if (response.success) {
+        setError('');
+        alert('Connection successful! System is working properly.');
+      } else {
+        setError('Connection failed: ' + response.error);
+      }
+    } catch (err) {
+      console.error('Health check error', err);
+      setError('Connection test failed. Please check your configuration.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  const isFormDisabled = isLoading || isSubmitting;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -55,7 +118,7 @@ export const LoginPage: React.FC = () => {
             Markaz
           </h1>
           <p className="text-muted-foreground text-sm mt-2">
-            Supplier Return Dispute Portal
+            Supplier Dispute Management Portal
           </p>
         </div>
 
@@ -66,27 +129,32 @@ export const LoginPage: React.FC = () => {
               Sign In
             </CardTitle>
             <CardDescription className="text-center">
-              Enter your credentials to access the portal
+              Enter your registered credentials to access the portal
             </CardDescription>
           </CardHeader>
           
           <CardContent className="space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="Enter your registered email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="bg-input border-border focus:ring-primary"
-                  disabled={isLoading}
+                  disabled={isFormDisabled}
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -95,7 +163,8 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="bg-input border-border focus:ring-primary pr-10"
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
+                    required
                   />
                   <Button
                     type="button"
@@ -103,7 +172,8 @@ export const LoginPage: React.FC = () => {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
+                    tabIndex={-1}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4 text-muted-foreground" />
@@ -116,6 +186,7 @@ export const LoginPage: React.FC = () => {
 
               {error && (
                 <Alert variant="destructive" className="animate-slide-up">
+                  <AlertCircle className="h-4 w-4" />
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -123,23 +194,43 @@ export const LoginPage: React.FC = () => {
               <Button
                 type="submit"
                 className="w-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary"
-                disabled={isLoading}
+                disabled={isFormDisabled}
               >
-                {isLoading ? 'Signing in...' : 'Sign In'}
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign In
+                  </>
+                )}
               </Button>
             </form>
 
             <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                Demo Accounts
-              </p>
+              <div className="flex justify-between items-center mb-3">
+                <p className="text-sm text-muted-foreground">Demo Accounts</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={testConnection}
+                  className="text-xs px-2 py-1 h-auto"
+                  disabled={isFormDisabled}
+                  title="Test connection to Google Sheets"
+                >
+                  Test Connection
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => fillDemoCredentials('admin')}
                   className="text-xs flex items-center gap-1"
-                  disabled={isLoading}
+                  disabled={isFormDisabled}
                 >
                   <Shield className="h-3 w-3" />
                   Admin Demo
@@ -149,12 +240,28 @@ export const LoginPage: React.FC = () => {
                   size="sm"
                   onClick={() => fillDemoCredentials('supplier')}
                   className="text-xs flex items-center gap-1"
-                  disabled={isLoading}
+                  disabled={isFormDisabled}
                 >
-                  <LogIn className="h-3 w-3" />
+                  <User className="h-3 w-3" />
                   Supplier Demo
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Click demo buttons to auto-fill credentials
+              </p>
+            </div>
+
+            {/* Help Section */}
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+              <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Need Help?
+              </h4>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• Use your registered email and password</li>
+                <li>• Contact admin if you forgot your credentials</li>
+                <li>• Ensure stable internet connection</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
@@ -166,3 +273,5 @@ export const LoginPage: React.FC = () => {
     </div>
   );
 };
+
+export default LoginPage;
