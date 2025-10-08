@@ -48,18 +48,22 @@ function normalizeRow(row: Record<string, any>): Dispute {
   const idFromRow = getFirst(row, "id", "ID", "Id") || `${getFirst(row, "Order Item ID", "OrderItemID") || ""}-${getFirst(row, "TrackingID", "TrackingId") || ""}`;
 
   const dispute: Dispute = {
-    id: String(idFromRow || ""),
-    orderItemId: String(getFirst(row, "orderItemId", "Order Item ID", "OrderItemID") || ""),
-    trackingId: String(getFirst(row, "trackingId", "TrackingID", "Tracking Id") || ""),
-    supplierCity: String(getFirst(row, "supplierCity", "City", "city") || ""),
-    deliveryPartner: String(getFirst(row, "deliveryPartner", "Delivery Partner") || ""),
+    Timestamp: String(getFirst(row, "Timestamp", "submissionDate", "Submission Date", "SubmissionDate") || ""),
     supplierName: supplierName || "",
     supplierEmail: supplierEmail || "",
-    status: (getFirst(row, "status", "Status") as Dispute["status"]) || "Pending",
-    lastUpdateDate: String(getFirst(row, "lastUpdateDate", "Last Update", "LastUpdate") || ""),
-    reason: String(getFirst(row, "reason", "ReasonforDispute", "Reason for Dispute", "Reason") || ""),
-    submissionDate: String(getFirst(row, "submissionDate", "Submission Date", "SubmissionDate") || ""),
-    supplierId: String(getFirst(row, "supplierId", "SupplierID", "supplier_id") || "")
+    supplierId: String(getFirst(row, "supplierId", "SupplierID", "supplier_id") || ""),
+    disputeType: String(getFirst(row, "disputeType", "Dispute Type") || ""),
+    disputeDescription: String(getFirst(row, "disputeDescription", "reason", "ReasonforDispute", "Reason for Dispute", "Reason") || ""),
+    orderNumber: String(getFirst(row, "orderNumber", "orderItemId", "Order Item ID", "OrderItemID") || ""),
+    disputeAmount: String(getFirst(row, "disputeAmount", "Dispute Amount") || ""),
+    attachments: String(getFirst(row, "attachments", "Attachments") || ""),
+    priority: String(getFirst(row, "priority", "Priority") || "Medium"),
+    category: String(getFirst(row, "category", "Category") || ""),
+    subcategory: String(getFirst(row, "subcategory", "Subcategory") || ""),
+    expectedResolution: String(getFirst(row, "expectedResolution", "Expected Resolution") || ""),
+    contactPhone: String(getFirst(row, "contactPhone", "Contact Phone") || ""),
+    preferredContactMethod: String(getFirst(row, "preferredContactMethod", "Preferred Contact Method") || ""),
+    Status: (getFirst(row, "status", "Status") as Dispute["Status"]) || "Pending",
   };
 
   return dispute;
@@ -151,7 +155,7 @@ export async function createDispute(payload: {
 /**
  * Update a dispute status (updates Adminportal and keeps things in sync).
  */
-export async function updateDisputeStatus(disputeId: string, newStatus: Dispute["status"]): Promise<boolean> {
+export async function updateDisputeStatus(disputeId: string, newStatus: Dispute["Status"]): Promise<boolean> {
   if (USE_DEMO) {
     return await googleSheetsService.updateDisputeStatus(disputeId, newStatus);
   }

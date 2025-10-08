@@ -39,7 +39,7 @@ interface Dispute {
   expectedResolution?: string;
   contactPhone?: string;
   preferredContactMethod?: string;
-  Status: "Pending" | "In Progress" | "Resolved" | "Rejected" | "Under Review";
+  Status: "Pending" | "In Progress" | "Resolved" | "Rejected" | "Under Review" | "Fake Signatures" | "Paid";
   [key: string]: any;
 }
 

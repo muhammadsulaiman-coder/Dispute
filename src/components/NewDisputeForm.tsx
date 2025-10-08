@@ -1,7 +1,19 @@
 import React, { useState } from "react";
 import googleSheetsAPI, { DisputeData } from "../services/googleSheets";
 
-export const NewDisputeForm: React.FC = () => {
+interface NewDisputeFormProps {
+  onSubmit?: (disputeData: {
+    orderItemId: string;
+    trackingId: string;
+    reason: string;
+    supplierName: string;
+    supplierEmail: string;
+    supplierId?: string;
+  }) => Promise<void>;
+  isLoading?: boolean;
+}
+
+export const NewDisputeForm: React.FC<NewDisputeFormProps> = ({ onSubmit, isLoading: externalLoading }) => {
   const [formData, setFormData] = useState<DisputeData>({
     OrderItemID: "",
     TrackingID: "",
@@ -10,6 +22,8 @@ export const NewDisputeForm: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  const isSubmitting = externalLoading !== undefined ? externalLoading : loading;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -26,7 +40,19 @@ export const NewDisputeForm: React.FC = () => {
     setMessage("");
 
     try {
-      await googleSheetsAPI.createDispute(formData);
+      if (onSubmit) {
+        // Use external submit handler if provided
+        await onSubmit({
+          orderItemId: formData.OrderItemID || "",
+          trackingId: formData.TrackingID || "",
+          reason: formData.ReasonforDispute || "",
+          supplierName: "",
+          supplierEmail: "",
+        });
+      } else {
+        // Use default submit handler
+        await googleSheetsAPI.createDispute(formData);
+      }
       setMessage("Dispute created successfully!");
       setFormData({
         OrderItemID: "",
@@ -87,10 +113,10 @@ export const NewDisputeForm: React.FC = () => {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={isSubmitting}
           className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "Submitting..." : "Submit Dispute"}
+          {isSubmitting ? "Submitting..." : "Submit Dispute"}
         </button>
       </form>
     </div>

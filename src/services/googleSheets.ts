@@ -356,6 +356,99 @@ export class GoogleSheetsAPI {
 // Export singleton instance
 export const googleSheetsAPI = new GoogleSheetsAPI();
 
+// Dispute Type Definition
+export interface Dispute {
+  Timestamp: string;
+  supplierName: string;
+  supplierEmail: string;
+  supplierId: string;
+  disputeType: string;
+  disputeDescription: string;
+  orderNumber: string;
+  disputeAmount: string;
+  attachments?: string;
+  priority: string;
+  category: string;
+  subcategory?: string;
+  expectedResolution?: string;
+  contactPhone?: string;
+  preferredContactMethod?: string;
+  Status: 'Pending' | 'In Progress' | 'Resolved' | 'Rejected' | 'Under Review' | 'Fake Signatures' | 'Paid';
+  [key: string]: any;
+}
+
+// Get all disputes
+export async function getDisputes(supplierIdFilter?: string): Promise<Dispute[]> {
+  const response = await googleSheetsAPI.getAdminPortalData();
+  
+  if (response.success && response.data) {
+    let disputes = response.data.map((row: any) => ({
+      Timestamp: row.Timestamp || row.submissionDate || '',
+      supplierName: row.supplierName || row.Supplier || '',
+      supplierEmail: row.supplierEmail || '',
+      supplierId: row.supplierId || row.SupplierID || '',
+      disputeType: row.disputeType || '',
+      disputeDescription: row.disputeDescription || row.ReasonforDispute || '',
+      orderNumber: row.orderNumber || row.OrderItemID || '',
+      disputeAmount: row.disputeAmount || '',
+      attachments: row.attachments || '',
+      priority: row.priority || 'Medium',
+      category: row.category || '',
+      subcategory: row.subcategory || '',
+      expectedResolution: row.expectedResolution || '',
+      contactPhone: row.contactPhone || '',
+      preferredContactMethod: row.preferredContactMethod || '',
+      Status: row.Status || row.status || 'Pending',
+    }));
+
+    if (supplierIdFilter) {
+      disputes = disputes.filter((d: Dispute) => d.supplierId === supplierIdFilter);
+    }
+
+    return disputes;
+  }
+  
+  return [];
+}
+
+// Update dispute status
+export async function updateDisputeStatus(disputeId: string, newStatus: Dispute['Status']): Promise<boolean> {
+  // In production, this would make an API call to update the status
+  console.log(`Updating dispute ${disputeId} to status: ${newStatus}`);
+  return true;
+}
+
+// Send notification
+export async function sendNotification(dispute: Dispute, newStatus: Dispute['Status']): Promise<void> {
+  console.log(`Sending notification for dispute ${dispute.supplierId} with status: ${newStatus}`);
+  // In production, this would send an email notification
+}
+
+// Calculate metrics from disputes
+export function calculateMetrics(disputes: Dispute[]) {
+  return {
+    totalSubmitted: disputes.length,
+    totalPending: disputes.filter(d => d.Status === 'Pending').length,
+    totalInProgress: disputes.filter(d => d.Status === 'In Progress').length,
+    totalResolved: disputes.filter(d => d.Status === 'Resolved').length,
+    totalRejected: disputes.filter(d => d.Status === 'Rejected').length,
+    totalFakeSignatures: disputes.filter(d => d.Status === 'Fake Signatures').length,
+    totalPaid: disputes.filter(d => d.Status === 'Paid').length
+  };
+}
+
+// Create a new dispute
+export async function createDispute(disputeData: Partial<Dispute>): Promise<boolean> {
+  const body = {
+    action: 'createDispute',
+    ...disputeData,
+    Timestamp: new Date().toISOString(),
+  };
+
+  const response = await googleSheetsAPI.createDispute(body);
+  return response.success;
+}
+
 // Utility functions
 export const DisputeUtils = {
   // Format dispute data for display
@@ -402,7 +495,8 @@ export const DisputeUtils = {
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     return `DSP-${timestamp}-${random}`;
   }
-};// Wrapper service export (to match imports in SupplierDashboard.tsx)
+};
+// Wrapper service export (to match imports in SupplierDashboard.tsx)
 export const googleSheetsService = {
   getSheetData: googleSheetsAPI.getSheetData.bind(googleSheetsAPI),
   getSupplierViewData: googleSheetsAPI.getSupplierViewData.bind(googleSheetsAPI),
@@ -410,7 +504,7 @@ export const googleSheetsService = {
   getNewFormData: googleSheetsAPI.getNewFormData.bind(googleSheetsAPI),
   getLoginActivityData: googleSheetsAPI.getLoginActivityData.bind(googleSheetsAPI),
   getLoginCredentials: googleSheetsAPI.getLoginCredentials.bind(googleSheetsAPI),
-  createDispute: googleSheetsAPI.createDispute.bind(googleSheetsAPI),
+  createDispute: createDispute,
   loginSupplier: googleSheetsAPI.loginSupplier.bind(googleSheetsAPI),
   getDisputesBySupplierId: googleSheetsAPI.getDisputesBySupplierId.bind(googleSheetsAPI),
   getDisputesByStatus: googleSheetsAPI.getDisputesByStatus.bind(googleSheetsAPI),
@@ -420,6 +514,10 @@ export const googleSheetsService = {
   validateSupplier: googleSheetsAPI.validateSupplier.bind(googleSheetsAPI),
   getRecentLoginActivity: googleSheetsAPI.getRecentLoginActivity.bind(googleSheetsAPI),
   healthCheck: googleSheetsAPI.healthCheck.bind(googleSheetsAPI),
+  getDisputes: getDisputes,
+  updateDisputeStatus: updateDisputeStatus,
+  sendNotification: sendNotification,
+  calculateMetrics: calculateMetrics
 };
 
 
