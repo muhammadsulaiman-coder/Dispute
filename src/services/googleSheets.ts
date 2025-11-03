@@ -1,7 +1,7 @@
 // googlesheet.ts - Complete Google Sheets API Integration for Dispute Management System
 
 // Configuration
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxc-nY6icCM1G70MuKP7OrDMkOw6PpCHt--peHHaZDCRJmiPv7DfEKpQs9H4DHBW9yA/exec';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyEl_ByLapQpGJnZvq4aH5vTol-eGX6AYGWH3njYw3liTKKqDKfLAOFi8zvYqpeb8m8/exec';
 
 // Types
 export interface DisputeData {
