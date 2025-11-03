@@ -69,9 +69,11 @@ export class GoogleSheetsAPI {
 
       const options: RequestInit = {
         method,
+        mode: 'cors', // Explicitly enable CORS
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'omit', // Don't send cookies
       };
 
       if (method === 'POST' && body) {
