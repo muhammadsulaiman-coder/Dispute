@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithUser: (userData: { email: string; role: string; supplierId?: string; supplierName?: string }) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -80,6 +81,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
+  const loginWithUser = (userData: { email: string; role: string; supplierId?: string; supplierName?: string }) => {
+    const user: User = {
+      id: userData.supplierId?.toString() || userData.email,
+      email: userData.email,
+      role: userData.role as UserRole,
+      supplierId: userData.supplierId?.toString(),
+      supplierName: userData.supplierName
+    };
+    setUser(user);
+    localStorage.setItem('markaz_user', JSON.stringify(user));
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('markaz_user');
@@ -89,6 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     isAuthenticated: !!user,
     login,
+    loginWithUser,
     logout,
     isLoading
   };
