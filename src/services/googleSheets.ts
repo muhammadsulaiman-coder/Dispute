@@ -1,7 +1,14 @@
 // googlesheet.ts - Complete Google Sheets API Integration for Dispute Management System
 
 // Configuration
-const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwexFXIVx92_DLXhuLKRulRnJvgRy3TYhWK6qIOKh6MsuXmeCZKZOBF3C9zc_VlgcJi/exec';
+// Updated to match the deployment URL used in Login.tsx
+const GOOGLE_APPS_SCRIPT_DEPLOYMENT_ID = 'AKfycbwYsrrQ1JisPulBgFyEySusajEXLrbgOlkTjaDQPowBNi5sfLrvq9zvRKuflfBP4hylWw';
+const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/' + GOOGLE_APPS_SCRIPT_DEPLOYMENT_ID + '/exec';
+
+// Use direct URL - text/plain approach avoids CORS preflight
+const getApiUrl = () => {
+  return GOOGLE_APPS_SCRIPT_URL;
+};
 
 // Types
 export interface DisputeData {
@@ -49,11 +56,12 @@ export interface ApiResponse<T = any> {
 export class GoogleSheetsAPI {
   private baseUrl: string;
 
-  constructor(scriptUrl: string = GOOGLE_APPS_SCRIPT_URL) {
-    this.baseUrl = scriptUrl;
+  constructor(scriptUrl?: string) {
+    this.baseUrl = scriptUrl || getApiUrl();
   }
 
   // Generic method to handle API calls
+  // Standard solution: use text/plain to avoid CORS preflight
   private async makeRequest<T>(
     method: 'GET' | 'POST',
     params: any = {},
@@ -69,14 +77,14 @@ export class GoogleSheetsAPI {
 
       const options: RequestInit = {
         method,
-        mode: 'cors', // Explicitly enable CORS
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'omit', // Don't send cookies
+        mode: 'cors',
       };
 
       if (method === 'POST' && body) {
+        // Standard solution: use text/plain to avoid CORS preflight
+        options.headers = {
+          'Content-Type': 'text/plain;charset=utf-8',
+        };
         options.body = JSON.stringify(body);
       }
 

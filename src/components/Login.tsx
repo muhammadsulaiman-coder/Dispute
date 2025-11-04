@@ -1,5 +1,6 @@
 // src/components/Login.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +22,8 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isLoading } = useAuth();
+  const { login, loginWithUser, isLoading } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,20 +45,23 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      // Call the Google Sheets API for login
+      // Call the Google Sheets API for login using the configured service
+      console.log('Calling Google Sheets API for login');
       const response = await googleSheetsAPI.loginSupplier({ email, password });
+      console.log('Login response:', response);
 
-      // response shape: { success: boolean, data: { success: boolean, user: { ... } } } (per your googlesheets API)
-      if (response.success && response.data?.success) {
-        // We got a valid user from the Sheets API
-        // NOTE: login(...) expects 2 args (email, password) per your error: "Expected 2 arguments, but got 3."
-        // So call login(email, password) and rely on your AuthContext to fetch/store user details internally.
-        const success = await login(email, password);
-
-        if (!success) {
-          setError('Login failed. Please try again.');
-        }
-        // If login succeeded, navigate or let auth context drive the UI change.
+      // response shape: { success: boolean, data: { success: boolean, user: { ... } } }
+      if (response.success && response.data?.success && response.data?.user) {
+        // Use the user data from the API response
+        const userRole = response.data.user.role || 'supplier';
+        loginWithUser({
+          email: response.data.user.email,
+          role: userRole,
+          supplierId: response.data.user.supplierId,
+          supplierName: response.data.user.supplierName
+        });
+        // Navigate to appropriate dashboard
+        navigate(userRole === 'admin' ? '/admin' : '/supplier', { replace: true });
       } else {
         // Login failed according to the Sheets API
         const errorMessage = response.data?.message || response.error || 'Invalid credentials. Please try again.';
