@@ -7,7 +7,8 @@ import { googleSheetsService, Dispute as MockDispute } from './googleSheets';
 
 export type Dispute = MockDispute;
 
-const API_URL = "https://script.google.com/macros/s/AKfycbz8gX5cSsaaTO5LGq75qydkynsH2G0T4wb-Ovd58SkDacpkhbHHM6u-zn28pp0vHeC-/exec";
+// Updated to use the same deployment URL as login
+const API_URL = "https://script.google.com/macros/s/AKfycbwYsrrQ1JisPulBgFyEySusajEXLrbgOlkTjaDQPowBNi5sfLrvq9zvRKuflfBP4hylWw/exec";
 
 // Toggle this flag:
 // - true  = use local mock (googleSheetsService)  <-- recommended for local/dev
@@ -142,12 +143,14 @@ export async function createDispute(payload: {
     ReasonforDispute: payload.reason
   };
 
+  // Use text/plain to avoid CORS preflight (same approach as login)
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(body)
   });
 
+  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
   const result = await res.json();
   return result && result.success === true;
 }
@@ -160,9 +163,10 @@ export async function updateDisputeStatus(disputeId: string, newStatus: Dispute[
     return await googleSheetsService.updateDisputeStatus(disputeId, newStatus);
   }
 
+  // Use text/plain to avoid CORS preflight (same approach as login)
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({
       action: "updateStatus",
       id: disputeId,
@@ -170,6 +174,7 @@ export async function updateDisputeStatus(disputeId: string, newStatus: Dispute[
     })
   });
 
+  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
   const result = await res.json();
   return result && result.success === true;
 }

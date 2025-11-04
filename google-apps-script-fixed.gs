@@ -11,14 +11,12 @@ const LOGIN_CREDENTIALS = "LoginCredentials";
 const LOGIN_ACTIVITY = "LoginActivity";
 
 /***************************************************
- * ✅ Helper: Add proper CORS headers to responses
+ * ✅ Helper: Return JSON response
+ * CORS is handled by deployment settings (set "Who has access" to "Anyone")
  ***************************************************/
-function withCors(response) {
-  return response
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader("Access-Control-Allow-Origin", "*")
-    .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    .setHeader("Access-Control-Allow-Headers", "Content-Type");
+function withCors(jsonData) {
+  return ContentService.createTextOutput(JSON.stringify(jsonData))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 /***************************************************
@@ -41,25 +39,24 @@ function doGet(e) {
       return obj;
     });
 
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ success: true, data: jsonData })
-    ));
+    return withCors({ success: true, data: jsonData });
 
   } catch (err) {
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ success: false, message: err.message })
-    ));
+    return withCors({ success: false, message: err.message });
   }
 }
 
 /***************************************************
  * ✅ Handle POST Request (Submit Dispute & Login)
+ * Standard solution: parse JSON from e.postData.contents
  ***************************************************/
 function doPost(e) {
   try {
-    if (!e.postData || !e.postData.contents)
+    if (!e.postData || !e.postData.contents) {
       throw new Error("Missing POST body");
+    }
 
+    // Parse JSON from request body (works with text/plain content type)
     const body = JSON.parse(e.postData.contents);
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     
@@ -74,9 +71,7 @@ function doPost(e) {
     }
 
   } catch (err) {
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ success: false, message: err.message })
-    ));
+    return withCors({ success: false, message: err.message });
   }
 }
 
@@ -87,6 +82,10 @@ function handleLoginRequest(body, ss) {
   try {
     const { email, password } = body;
     
+    Logger.log("=== LOGIN ATTEMPT ===");
+    Logger.log("Email received: " + email);
+    Logger.log("Password received: " + password);
+    
     if (!email || !password) {
       throw new Error("Email and password are required");
     }
@@ -95,22 +94,48 @@ function handleLoginRequest(body, ss) {
     const credentialsSheet = ss.getSheetByName(LOGIN_CREDENTIALS);
     if (!credentialsSheet) throw new Error("Login credentials sheet not found");
     
+    Logger.log("Sheet found: " + LOGIN_CREDENTIALS);
+    
     const credData = credentialsSheet.getDataRange().getValues();
     const credHeaders = credData.shift();
     
-    // Find email and password index
-    const emailIdx = credHeaders.indexOf('email');
-    const passwordIdx = credHeaders.indexOf('password');
-    const supplierIdIdx = credHeaders.indexOf('supplierId');
-    const supplierNameIdx = credHeaders.indexOf('supplierName');
-    const roleIdx = credHeaders.indexOf('role');
+    Logger.log("Headers found: " + JSON.stringify(credHeaders));
+    Logger.log("Total rows (excluding header): " + credData.length);
+    
+    // Find email and password index (case-insensitive, trim whitespace)
+    const emailIdx = credHeaders.findIndex(h => String(h).toLowerCase().trim() === 'email');
+    const passwordIdx = credHeaders.findIndex(h => String(h).toLowerCase().trim() === 'password');
+    const supplierIdIdx = credHeaders.findIndex(h => String(h).toLowerCase().trim() === 'supplierid');
+    const supplierNameIdx = credHeaders.findIndex(h => String(h).toLowerCase().trim() === 'suppliername');
+    const roleIdx = credHeaders.findIndex(h => String(h).toLowerCase().trim() === 'role');
+    
+    Logger.log("Email column index: " + emailIdx);
+    Logger.log("Password column index: " + passwordIdx);
     
     if (emailIdx === -1 || passwordIdx === -1) {
-      throw new Error("Login credentials sheet is missing required columns");
+      Logger.log("ERROR: Missing required columns");
+      throw new Error("Login credentials sheet is missing required columns (email, password)");
     }
     
-    // Find the user
-    const user = credData.find(row => row[emailIdx] === email && row[passwordIdx] === password);
+    // Find the user (trim whitespace, case-insensitive email)
+    const searchEmail = email.toLowerCase().trim();
+    const searchPassword = password.trim();
+    
+    Logger.log("Searching for email: " + searchEmail);
+    Logger.log("Searching for password: " + searchPassword);
+    
+    const user = credData.find((row, index) => {
+      const rowEmail = String(row[emailIdx] || '').trim().toLowerCase();
+      const rowPassword = String(row[passwordIdx] || '').trim();
+      
+      Logger.log("Row " + index + " - Email: '" + rowEmail + "', Password: '" + rowPassword + "'");
+      Logger.log("Email match: " + (rowEmail === searchEmail));
+      Logger.log("Password match: " + (rowPassword === searchPassword));
+      
+      return rowEmail === searchEmail && rowPassword === searchPassword;
+    });
+    
+    Logger.log("User found: " + (user ? "YES" : "NO"));
     
     if (!user) {
       // Log failed login attempt
@@ -125,12 +150,10 @@ function handleLoginRequest(body, ss) {
         console.error("Failed to log login activity:", logErr);
       }
       
-      return withCors(ContentService.createTextOutput(
-        JSON.stringify({ 
-          success: false, 
-          message: "Invalid email or password" 
-        })
-      ));
+      return withCors({ 
+        success: false, 
+        message: "Invalid email or password" 
+      });
     }
     
     // Log login activity
@@ -143,18 +166,16 @@ function handleLoginRequest(body, ss) {
     });
     
     // Return user information
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ 
-        success: true, 
-        user: {
-          supplierId: user[supplierIdIdx] || '',
-          supplierName: user[supplierNameIdx] || '',
-          email: user[emailIdx],
-          role: user[roleIdx] || 'supplier'
-        },
-        message: "Login successful"
-      })
-    ));
+    return withCors({ 
+      success: true, 
+      user: {
+        supplierId: user[supplierIdIdx] || '',
+        supplierName: user[supplierNameIdx] || '',
+        email: user[emailIdx],
+        role: user[roleIdx] || 'supplier'
+      },
+      message: "Login successful"
+    });
     
   } catch (err) {
     // Log failed login attempt if email is provided
@@ -171,12 +192,10 @@ function handleLoginRequest(body, ss) {
       }
     }
     
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ 
-        success: false, 
-        message: err.message 
-      })
-    ));
+    return withCors({ 
+      success: false, 
+      message: err.message 
+    });
   }
 }
 
@@ -271,14 +290,10 @@ function handleCreateDisputeRequest(body, ss) {
       adminSheet.appendRow(adminRow);
     }
 
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ success: true, message: "Dispute submitted successfully" })
-    ));
+    return withCors({ success: true, message: "Dispute submitted successfully" });
 
   } catch (err) {
-    return withCors(ContentService.createTextOutput(
-      JSON.stringify({ success: false, message: err.message })
-    ));
+    return withCors({ success: false, message: err.message });
   }
 }
 
@@ -331,10 +346,15 @@ function getValueForHeader(data, header) {
 
 /***************************************************
  * ✅ Handle OPTIONS Request (CORS Preflight)
+ * Standard solution: return CORS headers
  ***************************************************/
 function doOptions(e) {
-  return withCors(ContentService.createTextOutput(
-    JSON.stringify({ success: true })
-  ));
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT)
+    .setHeaders({
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    });
 }
 
