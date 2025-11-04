@@ -8,6 +8,15 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      // Proxy Google Apps Script requests to avoid CORS issues during development
+      '/api/google-scripts': {
+        target: 'https://script.google.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/google-scripts/, ''),
+        secure: true,
+      },
+    },
   },
   plugins: [
     react(),
